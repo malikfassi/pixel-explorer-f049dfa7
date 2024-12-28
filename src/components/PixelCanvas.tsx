@@ -1,10 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-
-interface Tile {
-  x: number;
-  y: number;
-  pixels: string[][];
-}
+import { applyFisheye, addFoggyCorners } from '../utils/canvasEffects';
+import { Tile, generateTile, updateRandomPixels } from '../utils/tileManager';
 
 interface ViewportState {
   x: number;
@@ -15,10 +11,6 @@ interface ViewportState {
 const TILE_SIZE = 10;
 const PIXEL_SIZE = 10;
 const VIEWPORT_TILES = 32;
-const COLORS = [
-  '#9b87f5', '#7E69AB', '#6E59A5', '#D6BCFA',
-  '#FF719A', '#FFA99F', '#FFE29F', '#abecd6'
-];
 
 const PixelCanvas: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -27,49 +19,14 @@ const PixelCanvas: React.FC = () => {
   const [lastPos, setLastPos] = useState({ x: 0, y: 0 });
   const tilesRef = useRef<Map<string, Tile>>(new Map());
 
-  const generateTile = (x: number, y: number): Tile => {
-    const pixels = Array(TILE_SIZE).fill(0).map(() =>
-      Array(TILE_SIZE).fill(0).map(() => COLORS[Math.floor(Math.random() * COLORS.length)])
-    );
-    return { x, y, pixels };
-  };
-
   const getTileKey = (x: number, y: number) => `${x},${y}`;
 
   const ensureTileExists = (x: number, y: number) => {
     const key = getTileKey(x, y);
     if (!tilesRef.current.has(key)) {
-      tilesRef.current.set(key, generateTile(x, y));
+      tilesRef.current.set(key, generateTile(x, y, TILE_SIZE));
     }
     return tilesRef.current.get(key)!;
-  };
-
-  const updateRandomPixels = () => {
-    tilesRef.current.forEach(tile => {
-      const numPixels = Math.floor(Math.random() * 3) + 1;
-      for (let i = 0; i < numPixels; i++) {
-        const x = Math.floor(Math.random() * TILE_SIZE);
-        const y = Math.floor(Math.random() * TILE_SIZE);
-        tile.pixels[y][x] = COLORS[Math.floor(Math.random() * COLORS.length)];
-      }
-    });
-  };
-
-  const applyFisheye = (x: number, y: number, width: number, height: number) => {
-    const centerX = width / 2;
-    const centerY = height / 2;
-    const distX = (x - centerX) / centerX;
-    const distY = (y - centerY) / centerY;
-    const dist = Math.sqrt(distX * distX + distY * distY);
-    const strength = 0.3; // Adjust for stronger/weaker effect
-    
-    if (dist === 0) return { x, y };
-    
-    const factor = Math.pow(Math.sin(dist * Math.PI / 2), strength);
-    return {
-      x: centerX + distX * factor * centerX,
-      y: centerY + distY * factor * centerY
-    };
   };
 
   const draw = () => {
@@ -80,7 +37,6 @@ const PixelCanvas: React.FC = () => {
     ctx.fillStyle = '#1A1F2C';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Apply fisheye effect
     const tileSize = TILE_SIZE * PIXEL_SIZE * viewport.zoom;
     const startTileX = Math.floor(viewport.x / tileSize);
     const startTileY = Math.floor(viewport.y / tileSize);
@@ -116,19 +72,7 @@ const PixelCanvas: React.FC = () => {
       }
     }
 
-    // Add foggy corners
-    const gradient = ctx.createRadialGradient(
-      canvas.width / 2,
-      canvas.height / 2,
-      Math.min(canvas.width, canvas.height) * 0.3,
-      canvas.width / 2,
-      canvas.height / 2,
-      Math.min(canvas.width, canvas.height) * 0.8
-    );
-    gradient.addColorStop(0, 'rgba(26, 31, 44, 0)');
-    gradient.addColorStop(1, 'rgba(26, 31, 44, 0.7)');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    addFoggyCorners(ctx, canvas.width, canvas.height);
   };
 
   useEffect(() => {
