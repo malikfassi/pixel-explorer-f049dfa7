@@ -15,7 +15,10 @@ interface ViewportState {
 const TILE_SIZE = 10;
 const PIXEL_SIZE = 10;
 const VIEWPORT_TILES = 32;
-const COLORS = ['#9b87f5', '#7E69AB', '#6E59A5', '#D6BCFA'];
+const COLORS = [
+  '#9b87f5', '#7E69AB', '#6E59A5', '#D6BCFA',
+  '#FF719A', '#FFA99F', '#FFE29F', '#abecd6'
+];
 
 const PixelCanvas: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -52,6 +55,23 @@ const PixelCanvas: React.FC = () => {
     });
   };
 
+  const applyFisheye = (x: number, y: number, width: number, height: number) => {
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const distX = (x - centerX) / centerX;
+    const distY = (y - centerY) / centerY;
+    const dist = Math.sqrt(distX * distX + distY * distY);
+    const strength = 0.3; // Adjust for stronger/weaker effect
+    
+    if (dist === 0) return { x, y };
+    
+    const factor = Math.pow(Math.sin(dist * Math.PI / 2), strength);
+    return {
+      x: centerX + distX * factor * centerX,
+      y: centerY + distY * factor * centerY
+    };
+  };
+
   const draw = () => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
@@ -60,6 +80,7 @@ const PixelCanvas: React.FC = () => {
     ctx.fillStyle = '#1A1F2C';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    // Apply fisheye effect
     const tileSize = TILE_SIZE * PIXEL_SIZE * viewport.zoom;
     const startTileX = Math.floor(viewport.x / tileSize);
     const startTileY = Math.floor(viewport.y / tileSize);
@@ -73,10 +94,20 @@ const PixelCanvas: React.FC = () => {
 
         tile.pixels.forEach((row, y) => {
           row.forEach((color, x) => {
+            const pixelX = screenX + x * PIXEL_SIZE * viewport.zoom;
+            const pixelY = screenY + y * PIXEL_SIZE * viewport.zoom;
+            
+            const distorted = applyFisheye(
+              pixelX,
+              pixelY,
+              canvas.width,
+              canvas.height
+            );
+
             ctx.fillStyle = color;
             ctx.fillRect(
-              screenX + x * PIXEL_SIZE * viewport.zoom,
-              screenY + y * PIXEL_SIZE * viewport.zoom,
+              distorted.x,
+              distorted.y,
               PIXEL_SIZE * viewport.zoom,
               PIXEL_SIZE * viewport.zoom
             );
@@ -84,6 +115,20 @@ const PixelCanvas: React.FC = () => {
         });
       }
     }
+
+    // Add foggy corners
+    const gradient = ctx.createRadialGradient(
+      canvas.width / 2,
+      canvas.height / 2,
+      Math.min(canvas.width, canvas.height) * 0.3,
+      canvas.width / 2,
+      canvas.height / 2,
+      Math.min(canvas.width, canvas.height) * 0.8
+    );
+    gradient.addColorStop(0, 'rgba(26, 31, 44, 0)');
+    gradient.addColorStop(1, 'rgba(26, 31, 44, 0.7)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
   };
 
   useEffect(() => {
