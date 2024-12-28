@@ -3,7 +3,7 @@ export const applyFisheye = (
   y: number,
   width: number,
   height: number,
-  strength: number = 1.5
+  strength: number = 0.5  // Reduced from 1.5 to 0.5 for a more subtle effect
 ) => {
   const centerX = width / 2;
   const centerY = height / 2;
@@ -17,7 +17,7 @@ export const applyFisheye = (
   
   if (distance === 0) return { x, y };
   
-  // Apply distortion
+  // Apply distortion with reduced strength
   const distortionFactor = Math.atan(distance * strength) / (distance * strength);
   
   // Convert back to screen coordinates

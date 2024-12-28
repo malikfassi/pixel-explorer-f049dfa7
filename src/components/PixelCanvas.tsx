@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { applyFisheye, addFoggyCorners } from '../utils/canvasEffects';
 import { Tile, generateTile, updateRandomPixels } from '../utils/tileManager';
 
@@ -18,18 +18,19 @@ const PixelCanvas: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [lastPos, setLastPos] = useState({ x: 0, y: 0 });
   const tilesRef = useRef<Map<string, Tile>>(new Map());
+  const frameRef = useRef<number>();
 
   const getTileKey = (x: number, y: number) => `${x},${y}`;
 
-  const ensureTileExists = (x: number, y: number) => {
+  const ensureTileExists = useCallback((x: number, y: number) => {
     const key = getTileKey(x, y);
     if (!tilesRef.current.has(key)) {
       tilesRef.current.set(key, generateTile(x, y, TILE_SIZE));
     }
     return tilesRef.current.get(key)!;
-  };
+  }, []);
 
-  const draw = () => {
+  const draw = useCallback(() => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
@@ -42,8 +43,12 @@ const PixelCanvas: React.FC = () => {
     const startTileY = Math.floor(viewport.y / tileSize);
     const tilesInView = Math.ceil(VIEWPORT_TILES / viewport.zoom);
 
-    for (let ty = startTileY; ty < startTileY + tilesInView; ty++) {
-      for (let tx = startTileX; tx < startTileX + tilesInView; tx++) {
+    // Only render tiles that are actually visible
+    const visibleTilesX = Math.ceil(canvas.width / tileSize) + 1;
+    const visibleTilesY = Math.ceil(canvas.height / tileSize) + 1;
+
+    for (let ty = startTileY; ty < startTileY + Math.min(tilesInView, visibleTilesY); ty++) {
+      for (let tx = startTileX; tx < startTileX + Math.min(tilesInView, visibleTilesX); tx++) {
         const tile = ensureTileExists(tx, ty);
         const screenX = tx * tileSize - viewport.x;
         const screenY = ty * tileSize - viewport.y;
@@ -53,6 +58,12 @@ const PixelCanvas: React.FC = () => {
             const pixelX = screenX + x * PIXEL_SIZE * viewport.zoom;
             const pixelY = screenY + y * PIXEL_SIZE * viewport.zoom;
             
+            // Skip pixels that are outside the viewport
+            if (pixelX < -PIXEL_SIZE || pixelX > canvas.width + PIXEL_SIZE ||
+                pixelY < -PIXEL_SIZE || pixelY > canvas.height + PIXEL_SIZE) {
+              return;
+            }
+
             const distorted = applyFisheye(
               pixelX,
               pixelY,
@@ -73,7 +84,7 @@ const PixelCanvas: React.FC = () => {
     }
 
     addFoggyCorners(ctx, canvas.width, canvas.height);
-  };
+  }, [viewport, ensureTileExists]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -85,12 +96,17 @@ const PixelCanvas: React.FC = () => {
     const animate = () => {
       updateRandomPixels(tilesRef.current);
       draw();
-      requestAnimationFrame(animate);
+      frameRef.current = requestAnimationFrame(animate);
     };
 
-    const animationId = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(animationId);
-  }, [viewport]);
+    frameRef.current = requestAnimationFrame(animate);
+    
+    return () => {
+      if (frameRef.current) {
+        cancelAnimationFrame(frameRef.current);
+      }
+    };
+  }, [draw]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
