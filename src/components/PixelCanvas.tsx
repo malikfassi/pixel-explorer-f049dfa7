@@ -79,6 +79,23 @@ const PixelCanvas: React.FC = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const animate = () => {
+      updateRandomPixels(tilesRef.current);
+      draw();
+      requestAnimationFrame(animate);
+    };
+
+    const animationId = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animationId);
+  }, [viewport]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
     const handleMouseDown = (e: MouseEvent) => {
       setIsDragging(true);
       setLastPos({ x: e.clientX, y: e.clientY });
@@ -119,23 +136,6 @@ const PixelCanvas: React.FC = () => {
       canvas.removeEventListener('wheel', handleWheel);
     };
   }, [isDragging, lastPos]);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-
-    const animate = () => {
-      updateRandomPixels();
-      draw();
-      requestAnimationFrame(animate);
-    };
-
-    const animationId = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(animationId);
-  }, [viewport]);
 
   return (
     <canvas
