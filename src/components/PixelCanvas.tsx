@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { applyFisheye, addFoggyCorners } from '../utils/canvasEffects';
-import { Tile, generateTile, updateRandomPixels } from '../utils/tileManager';
+import { Tile, generateTile, updateRandomPixels, getFadedColor } from '../utils/tileManager';
 
 interface ViewportState {
   x: number;
@@ -43,7 +43,6 @@ const PixelCanvas: React.FC = () => {
     const startTileY = Math.floor(viewport.y / tileSize);
     const tilesInView = Math.ceil(VIEWPORT_TILES / viewport.zoom);
 
-    // Only render tiles that are actually visible
     const visibleTilesX = Math.ceil(canvas.width / tileSize) + 1;
     const visibleTilesY = Math.ceil(canvas.height / tileSize) + 1;
 
@@ -54,11 +53,10 @@ const PixelCanvas: React.FC = () => {
         const screenY = ty * tileSize - viewport.y;
 
         tile.pixels.forEach((row, y) => {
-          row.forEach((color, x) => {
+          row.forEach((pixelData, x) => {
             const pixelX = screenX + x * PIXEL_SIZE * viewport.zoom;
             const pixelY = screenY + y * PIXEL_SIZE * viewport.zoom;
             
-            // Skip pixels that are outside the viewport
             if (pixelX < -PIXEL_SIZE || pixelX > canvas.width + PIXEL_SIZE ||
                 pixelY < -PIXEL_SIZE || pixelY > canvas.height + PIXEL_SIZE) {
               return;
@@ -71,7 +69,7 @@ const PixelCanvas: React.FC = () => {
               canvas.height
             );
 
-            ctx.fillStyle = color;
+            ctx.fillStyle = getFadedColor(pixelData);
             ctx.fillRect(
               distorted.x,
               distorted.y,
