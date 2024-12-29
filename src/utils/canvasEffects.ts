@@ -3,7 +3,7 @@ export const applyFisheye = (
   y: number,
   width: number,
   height: number,
-  strength: number = 0.5
+  strength: number = 0.5  // Reduced from 1.5 to 0.5 for a more subtle effect
 ) => {
   const centerX = width / 2;
   const centerY = height / 2;
@@ -32,8 +32,7 @@ export const addFoggyCorners = (
   width: number,
   height: number
 ) => {
-  // Center gradient for subtle atmosphere
-  const centerGradient = ctx.createRadialGradient(
+  const gradient = ctx.createRadialGradient(
     width / 2,
     height / 2,
     Math.min(width, height) * 0.3,
@@ -41,51 +40,8 @@ export const addFoggyCorners = (
     height / 2,
     Math.min(width, height) * 0.8
   );
-  centerGradient.addColorStop(0, 'rgba(26, 31, 44, 0)');
-  centerGradient.addColorStop(1, 'rgba(26, 31, 44, 0.7)');
-  ctx.fillStyle = centerGradient;
+  gradient.addColorStop(0, 'rgba(26, 31, 44, 0)');
+  gradient.addColorStop(1, 'rgba(26, 31, 44, 0.7)');
+  ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, width, height);
-
-  // Add corner gradients for enhanced fog effect
-  const corners = [
-    [0, 0],
-    [width, 0],
-    [0, height],
-    [width, height]
-  ];
-
-  corners.forEach(([x, y]) => {
-    const cornerGradient = ctx.createRadialGradient(
-      x, y,
-      0,
-      x, y,
-      Math.min(width, height) * 0.4
-    );
-    cornerGradient.addColorStop(0, 'rgba(255, 255, 255, 0.15)');
-    cornerGradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.05)');
-    cornerGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
-    ctx.fillStyle = cornerGradient;
-    ctx.fillRect(0, 0, width, height);
-  });
-};
-
-export const getHoverEffect = (
-  x: number,
-  y: number,
-  mouseX: number,
-  mouseY: number,
-  pixelSize: number,
-  zoom: number
-): { scale: number; alpha: number } => {
-  const distance = Math.sqrt(
-    Math.pow(x - mouseX, 2) + Math.pow(y - mouseY, 2)
-  );
-  const hoverRadius = pixelSize * 4 * zoom;
-  
-  if (distance > hoverRadius) return { scale: 1, alpha: 1 };
-  
-  const scale = 1 + (0.2 * (1 - distance / hoverRadius));
-  const alpha = 1 + (0.3 * (1 - distance / hoverRadius));
-  
-  return { scale, alpha };
 };

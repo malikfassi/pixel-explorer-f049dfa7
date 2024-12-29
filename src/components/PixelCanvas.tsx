@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { applyFisheye, addFoggyCorners, getHoverEffect } from '../utils/canvasEffects';
+import { applyFisheye, addFoggyCorners } from '../utils/canvasEffects';
 import { Tile, generateTile, updateRandomPixels, getFadedColor } from '../utils/tileManager';
 
 interface ViewportState {
@@ -17,7 +17,6 @@ const PixelCanvas: React.FC = () => {
   const [viewport, setViewport] = useState<ViewportState>({ x: 0, y: 0, zoom: 1 });
   const [isDragging, setIsDragging] = useState(false);
   const [lastPos, setLastPos] = useState({ x: 0, y: 0 });
-  const [mousePos, setMousePos] = useState({ x: -1000, y: -1000 });
   const tilesRef = useRef<Map<string, Tile>>(new Map());
   const frameRef = useRef<number>();
 
@@ -70,34 +69,20 @@ const PixelCanvas: React.FC = () => {
               canvas.height
             );
 
-            const hoverEffect = getHoverEffect(
-              distorted.x,
-              distorted.y,
-              mousePos.x,
-              mousePos.y,
-              PIXEL_SIZE,
-              viewport.zoom
-            );
-
-            const pixelSize = PIXEL_SIZE * viewport.zoom * hoverEffect.scale;
-            const offset = (pixelSize - (PIXEL_SIZE * viewport.zoom)) / 2;
-
-            ctx.globalAlpha = hoverEffect.alpha;
             ctx.fillStyle = getFadedColor(pixelData);
             ctx.fillRect(
-              distorted.x - offset,
-              distorted.y - offset,
-              pixelSize,
-              pixelSize
+              distorted.x,
+              distorted.y,
+              PIXEL_SIZE * viewport.zoom,
+              PIXEL_SIZE * viewport.zoom
             );
-            ctx.globalAlpha = 1;
           });
         });
       }
     }
 
     addFoggyCorners(ctx, canvas.width, canvas.height);
-  }, [viewport, ensureTileExists, mousePos]);
+  }, [viewport, ensureTileExists]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -165,33 +150,6 @@ const PixelCanvas: React.FC = () => {
       canvas.removeEventListener('wheel', handleWheel);
     };
   }, [isDragging, lastPos]);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isDragging) {
-        const rect = canvas.getBoundingClientRect();
-        setMousePos({
-          x: e.clientX - rect.left,
-          y: e.clientY - rect.top
-        });
-      }
-    };
-
-    const handleMouseLeave = () => {
-      setMousePos({ x: -1000, y: -1000 });
-    };
-
-    canvas.addEventListener('mousemove', handleMouseMove);
-    canvas.addEventListener('mouseleave', handleMouseLeave);
-
-    return () => {
-      canvas.removeEventListener('mousemove', handleMouseMove);
-      canvas.removeEventListener('mouseleave', handleMouseLeave);
-    };
-  }, [isDragging]);
 
   return (
     <canvas
